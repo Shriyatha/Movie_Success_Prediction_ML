@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Success Prediction</title>
+    <style>
+        /* General Reset */
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fc;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: auto; /* Allow scrolling if the content overflows */
+        }
+
+        /* Container Styling */
+        .container {
+            max-width: 700px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            text-align: center;
+            overflow-y: auto; /* Allow scrolling if necessary */
+            max-height: 90vh; /* Ensure the container doesn't take up too much space */
+        }
+
+        h1 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        h2 {
+            margin-top: 20px;
+            color: #333;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        /* Form Styling */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+            flex-wrap: wrap; /* Allow wrapping of input fields */
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+            text-align: left;
+            width: 100%;
+            margin-bottom: 6px;
+        }
+
+        input[type="number"] {
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
+            background-color: #fafafa;
+            transition: border-color 0.3s;
+            min-width: 100%; /* Ensures input fields don't get too narrow */
+        }
+
+        input[type="number"]:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            margin-top: 15px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            background-color: #004085;
+        }
+
+        /* Image Styling */
+        #limeImage {
+            width: 100%;  /* Make the image responsive */
+            max-width: 1000px;  /* Set the maximum width */
+            height: auto;  /* Maintain aspect ratio */
+            margin-top: 20px;
+            margin-left: 10px;  /* Adjust the left margin to avoid cut-off */
+            margin-right: auto;
+            border-radius: 8px;
+            display: block;
+            overflow: hidden;  /* Prevent image from spilling out */
+        }
+
+        /* Loading Indicator */
+        #loading {
+            display: none;
+            font-size: 1.2rem;
+            color: #007bff;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Predict Movie Success</h1>
+        <form id="predictionForm">
+            <label for="Runtime">Runtime (Minutes):</label>
+            <input type="number" id="Runtime" name="Runtime (Minutes)" placeholder="Enter runtime in minutes" required>
+
+            <label for="Rating">Rating:</label>
+            <input type="number" step="0.1" id="Rating" name="Rating" placeholder="Enter IMDb rating" required>
+
+            <label for="Votes">Votes:</label>
+            <input type="number" id="Votes" name="Votes" placeholder="Enter number of votes" required>
+
+            <label for="Revenue">Revenue (Millions):</label>
+            <input type="number" step="0.1" id="Revenue" name="Revenue (Millions)" placeholder="Enter revenue in millions" required>
+
+            <label for="Metascore">Metascore:</label>
+            <input type="number" id="Metascore" name="Metascore" placeholder="Enter metascore" required>
+
+            <button type="button" onclick="makePrediction()">Predict</button>
+        </form>
+
+        <h2 id="result"></h2>
+
+        <!-- Image to display the LIME explanation -->
+        <img id="limeImage" src="" alt="LIME Explanation Image" style="display: none;">
+        
+        <button type="button" onclick="getLimeExplanation()">View LIME Explanation</button>
+
+        <!-- Loading indicator -->
+        <div id="loading">Loading...</div>
+    </div>
+
+    <script>
+        async function makePrediction() {
+            const loadingIndicator = document.getElementById('loading');
+            loadingIndicator.style.display = 'block';  // Show loading indicator
+
+            const formData = new FormData(document.getElementById('predictionForm'));
+            const data = Object.fromEntries(formData.entries());
+            console.log('Data being sent:', data);  // Log data being sent to the server
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                loadingIndicator.style.display = 'none';  // Hide loading indicator
+
+                console.log('Response status:', response.status);  // Log the response status
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Response data:', result);  // Log the response data
+
+                    if (result.success_status) {
+                        document.getElementById('result').innerText = `Prediction: ${result.success_status}`;
+                    } else {
+                        document.getElementById('result').innerText = 'Prediction failed, no status available.';
+                    }
+                } else {
+                    document.getElementById('result').innerText = `Error: ${response.statusText || "Unknown error"}`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerText = 'Error: Unable to make prediction';
+                console.error('Error making prediction:', error);  // Log error to the console
+            }
+        }
+
+        async function getLimeExplanation() {
+            const formData = new FormData(document.getElementById('predictionForm'));
+            const data = Object.fromEntries(formData.entries());
+
+            // Optionally, validate data before sending (example: check if a field is missing)
+            if (!data['Runtime (Minutes)'] || !data['Rating'] || !data['Votes']) {
+                alert('Please fill in all the required fields!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/lime_explanation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch LIME explanation');
+                }
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+
+                // Display the image in the page
+                const limeImage = document.getElementById('limeImage');
+                limeImage.src = url;
+                limeImage.style.display = 'block';  // Show the image
+            } catch (error) {
+                console.error('Error fetching LIME explanation:', error);
+                alert('Error fetching LIME explanation. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>
